@@ -1,11 +1,13 @@
 #!/bin/bash
 ############################################################
 
+
 if [[ "$(id -u)" != "0" ]]; then 
 	echo "Must be run as root!"
 	exit 1
 fi
 
+source ./install.conf
 REPO_DIR=$(pwd)
 
 mkdir /tmp/ruby 
@@ -32,6 +34,8 @@ cd $REPO_DIR
 bundle install
 
 cp lib/support/init.d/gitlab_ci_runner /etc/init.d/gitlab-ci-runner
+sed -i "/APP_USER=/c\APP_USER=$(GLCIR_USER)" /etc/init.d/gitlab-ci-runner
+sed -i "/APP_ROOT=/c\APP_ROOT=$(GLCIR_ROOT)" /etc/init.d/gitlab-ci-runner
 chmod +x /etc/init.d/gitlab-ci-runner
 chkconfig --level 3 gitlab-ci-runner on
 
