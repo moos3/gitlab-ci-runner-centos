@@ -1,7 +1,7 @@
 # gitlab-ci-runner
 
-FROM ubuntu:12.04
-MAINTAINER  Sytse Sijbrandij "sytse@gitlab.com"
+FROM centos:6.5
+MAINTAINER Myles Hathcock "myleshathcock@gmail.com"
 
 # This script will start a runner in a docker container.
 #
@@ -21,23 +21,17 @@ MAINTAINER  Sytse Sijbrandij "sytse@gitlab.com"
 # docker build -no-cache -t gitlabhq/gitlab-ci-runner github.com/gitlabhq/gitlab-ci-runner
 
 # Update your packages and install the ones that are needed to compile Ruby
-RUN apt-get update -y
-RUN apt-get install -y wget curl gcc libxml2-dev libxslt-dev libcurl4-openssl-dev libreadline6-dev libc6-dev libssl-dev make build-essential zlib1g-dev openssh-server git-core libyaml-dev postfix libpq-dev libicu-dev
+
+RUN yum update -y
+RUN yum groupinstall "Development Tools"
+RUN yum install -y wget curl curl-devel libxml2-devel libxslt-devel readline-devel glibc-devel openssl-devel zlib-devel openssh-server git-core postfix postgresql-devel libicu-devel libqt4-webkit libqt4-devel libsqlite3-devel libmysqlclient-devel
 
 # Download Ruby and compile it
 RUN mkdir /tmp/ruby && cd /tmp/ruby && curl --progress http://ftp.ruby-lang.org/pub/ruby/1.9/ruby-1.9.3-p392.tar.gz | tar xz
 RUN cd /tmp/ruby/ruby-1.9.3-p392 && ./configure --disable-install-rdoc && make && make install
 
-# Fix upstart under a virtual host https://github.com/dotcloud/docker/issues/1024
-RUN dpkg-divert --local --rename --add /sbin/initctl
-RUN ln -s /bin/true /sbin/initctl
-
-# Install packages commonly required to test Rails projects before the test run starts
-# If they are not here you have to add them to the test script in the project settings
-RUN apt-get install -y libqtwebkit-dev # test with capybara
-RUN apt-get install -y sqlite3 libsqlite3-dev # sqlite is the default datastore
-RUN apt-get install -y libmysqlclient-dev # native extensions for the mysql2 gem
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -q -y mysql-server # install MySQL with blank root password
+# Install mysql server with blank root password
+RUN yum install -y -q mysql-server
 RUN cd /root && wget http://download.redis.io/redis-stable.tar.gz && tar xvzf redis-stable.tar.gz && cd redis-stable && make
 
 # Set the right locale for Postgres
@@ -46,7 +40,7 @@ RUN locale-gen en_US.UTF-8
 RUN update-locale LANG=en_US.UTF-8
 
 # Install PostgreSQL, after install this should work: psql --host=127.0.0.1 roottestdb
-RUN apt-get install -y postgresql
+RUN yum install -y postgresql
 RUN cat /dev/null > /etc/postgresql/9.1/main/pg_hba.conf
 RUN echo "# TYPE DATABASE USER ADDRESS METHOD" >> /etc/postgresql/9.1/main/pg_hba.conf
 RUN echo "local  all  all  trust" >> /etc/postgresql/9.1/main/pg_hba.conf
@@ -59,11 +53,11 @@ RUN mkdir -p /root/.ssh
 RUN touch /root/.ssh/known_hosts
 
 # Install the runner
-RUN git clone https://github.com/gitlabhq/gitlab-ci-runner.git /gitlab-ci-runner
+RUN git clone https://github.com/darthmuffins/gitlab-ci-runner-centos.git /gitlab-ci-runner-centos
 
 # Install the gems for the runner
-RUN cd /gitlab-ci-runner && gem install bundler && bundle install
+RUN cd /gitlab-ci-runner-centos && gem install bundler && bundle install
 
 # When the image is started add the remote server key, unstall the runner and run it
-WORKDIR /gitlab-ci-runner
+WORKDIR /gitlab-ci-runner-centos
 CMD ssh-keyscan -H $GITLAB_SERVER_FQDN >> /root/.ssh/known_hosts && mysqld & /root/redis-stable/src/redis-server & /etc/init.d/postgresql start & bundle exec ./bin/setup_and_run
