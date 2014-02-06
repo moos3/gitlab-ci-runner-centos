@@ -1,6 +1,25 @@
 #!/bin/bash
 ############################################################
 
+install_ruby() {
+	mkdir /tmp/ruby 
+	cd /tmp/ruby
+	curl --progress ftp://ftp.ruby-lang.org/pub/ruby/2.0/ruby-2.0.0-p353.tar.gz | tar xz
+	cd ruby-2.0.0-p353
+	./configure --disable-install-rdoc
+	make
+	make install
+}
+
+install_libyaml() {
+	mkdir /tmp/libyaml
+	cd /tmp/libyaml
+	curl --progress http://pyyaml.org/download/libyaml/yaml-0.1.4.tar.gz | tar xz
+	cd yaml-0.1.4
+	./configure
+	make
+	make install
+}
 
 if [[ "$(id -u)" != "0" ]]; then 
 	echo "Must be run as root!"
@@ -10,23 +29,20 @@ fi
 source ./install.conf
 REPO_DIR=$(pwd)
 
-mkdir /tmp/ruby 
-cd /tmp/ruby
-curl --progress ftp://ftp.ruby-lang.org/pub/ruby/2.0/ruby-2.0.0-p353.tar.gz | tar xz
-cd ruby-2.0.0-p353
-./configure --disable-install-rdoc
-make
-make install
-
-mkdir /tmp/libyaml
-cd /tmp/libyaml
-curl --progress http://pyyaml.org/download/libyaml/yaml-0.1.4.tar.gz | tar xz
-cd yaml-0.1.4
-./configure
-make
-make install
+ruby --version 
+if [[ $? -ne 0 ]]; then
+	install_ruby
+fi
 
 yum groupinstall "Development Tools"
+
+# Note: I'm aware this will redo libyaml if you run it again after rebooting. Libyaml is small
+# and fast to build and install, and I was just including this to make development of the 
+# install scripts faster.
+if [[ ! -d /tmp/libyaml ]]; then
+	install_libyaml
+fi
+
 yum install -y wget curl curl-devel libxml2-devel libxslt-devel readline-devel glibc-devel openssl-devel zlib-devel openssh-server git-core postfix postgresql-devel libicu-devel
 
 gem install bundler
