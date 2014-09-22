@@ -6,9 +6,6 @@ module GitlabCi
   class Setup
     def initialize
       build_config
-      if not File.exists?('~/.ssh/id_rsa.pub')
-        generate_ssh_key
-      end
       register_runner
     end
 
